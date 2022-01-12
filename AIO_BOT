@@ -1,0 +1,10 @@
+AIO BOT
+
+1) Music Player with HUD
+	-> First implement basic fetch and play from youtube and spotify
+	-> Add hud and setup functionalities
+
+2) Reminders probably integrate with GC
+
+3) Reddit Channel to fetch posts with a some conditions
+	-> .sub <subname> <minimum likes>
