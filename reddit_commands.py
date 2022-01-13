@@ -4,12 +4,6 @@ import os
 import requests
 
 
-
-res = requests.get('https://oauth.reddit.com/r/dankinindia/hot', headers = headers).json()
-for post in res['data']['children']:
-	print('https://www.reddit.com' + post['data']['permalink'])
-
-
 class RedditCommands(commands.Cog):
     def __init__(self,client):
         super().__init__()
@@ -27,7 +21,7 @@ class RedditCommands(commands.Cog):
         }
         self.headers = {'User-Agent': 'RedditApi/0.0.1'}
         self.res = requests.post('https://www.reddit.com/api/v1/access_token', auth = self.auth, data = self.data, headers = self.headers)
-        self.reddit_token = res.json()['access_token']
+        self.reddit_token = self.res.json()['access_token']
         self.headers['Authorization'] = f'bearer {self.reddit_token}'
 
 
