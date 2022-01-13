@@ -12,19 +12,19 @@ class Music(commands.Cog):
 		if ctx.author.voice is None:
 			await ctx.send("Not connected to a voice channel")
 		voice_channel = ctx.author.voice.channel
-		if ctx.voice.client is None:
+		if ctx.voice_client is None:
 		  await voice_channel.connect()
 		else:
 			await ctx.voice_client.move_to(voice_channel)
 		
 		ydl_opts = {'format': 'bestaudio'}
-		FFMPEG_OPTIONS = {'before_options' : 'reconnect 1 - reconnect_streamed 1 -reconnect_delay_max 5', 'options' : '-vn'}
+		# FFMPEG_OPTIONS = {'before_options' : "reconnect 1 - reconnect_streamed 1 -reconnect_delay_max 5", 'options' : "-vn"}
 		
 		vc = ctx.voice_client
 		with youtube_dl.YoutubeDL(ydl_opts) as ydl:
 			info = ydl.extract_info(url, download = False)
 			url2 = info['formats'][0]['url']
-			source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+			source = await discord.FFmpegOpusAudio.from_probe(url2)
 			vc.play(source)
 	
 	@commands.command()
