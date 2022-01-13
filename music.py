@@ -12,35 +12,53 @@ class Music(commands.Cog):
 		if ctx.author.voice is None:
 			await ctx.send("Not connected to a voice channel")
 		voice_channel = ctx.author.voice.channel
+    	
+		await ctx.guild.change_voice_state(channel=voice_channel, self_mute=False, self_deaf=True)
+
 		if ctx.voice_client is None:
-		  await voice_channel.connect()
+			await voice_channel.connect()
 		else:
 			await ctx.voice_client.move_to(voice_channel)
 		
-		ydl_opts = {'format': 'bestaudio'}
-		# FFMPEG_OPTIONS = {'before_options' : "reconnect 1 - reconnect_streamed 1 -reconnect_delay_max 5", 'options' : "-vn"}
+		ytdl_format_options = {
+        'format': 'bestaudio/best',
+        'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+        'restrictfilenames': True,
+        'noplaylist': True,
+        'nocheckcertificate': True,
+        'ignoreerrors': False,
+        'logtostderr': False,
+        'quiet': True,
+        'no_warnings': True,
+        'default_search': 'auto',
+        'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+    }
+		ffmpeg_options = {
+      'options': '-vn',
+      "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+    }
 		
 		vc = ctx.voice_client
-		with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+		with youtube_dl.YoutubeDL(ytdl_format_options) as ydl:
 			info = ydl.extract_info(url, download = False)
 			url2 = info['formats'][0]['url']
-			source = await discord.FFmpegOpusAudio.from_probe(url2)
+			source = await discord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
 			vc.play(source)
 	
 	@commands.command()
 	async def pause(self, ctx):
 		await ctx.voice_client.pause()
-		await ctx.send("Paused")
+		await ctx.channel.send("Paused")
 
 	@commands.command()
 	async def resume(self, ctx):
 		await ctx.voice_client.resume()
-		await ctx.send("Resumed")
+		await ctx.channel.send("Resumed")
 	
-	@commands.command()
-	async def stop(self, ctx):
-		await ctx.voice_client.stop()
-		await ctx.send("Stopped the playlist")
+	@commands.command(aliases = ['dc'])
+	async def disconnect(self, ctx):
+		await ctx.voice_client.disconnect()
+		await ctx.channel.send("Stopped the playlist")
 
 def setup(client):
     client.add_cog(Music(client))
