@@ -1,23 +1,23 @@
 from server_pings import server_ping
 import discord
 import os
+from discord.ext import commands
 
 client = discord.Client()
 
+client = commands.Bot(command_prefix= '>')
 
 @client.event
 async def on_ready():
     print('{0.user} logged in'.format(client))
 
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello {}!'.format(
-            message.author.display_name))
+@client.command(aliases= ['Hello', 'hi', 'Hi'])
+async def hello(ctx, user: discord.User = None):
+    if(user != None):
+        await ctx.channel.send('Hello <@%s>!' %user.display_name)
+    else:
+        await ctx.channel.send('Hello <@%s>!' %ctx.author.display_name)
 
 
 server_ping()
