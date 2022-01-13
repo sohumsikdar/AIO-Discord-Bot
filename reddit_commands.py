@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import requests
-
+import random
 
 class RedditCommands(commands.Cog):
 	def __init__(self,client):
@@ -34,17 +34,16 @@ class RedditCommands(commands.Cog):
 
 		else:
 			url_list = self.fetch_from_sub(sub)
-			if url_list == None or len(url_list) < 1:
-				if len(url_list) < 1:
-					await ctx.channel.send('No hot posts to display')
-				else: 
-					await ctx.channel.send('Couldn\'t find ' + sub)
+			if len(url_list) == 0:
+				await ctx.channel.send('Couldn\'t find ' + sub)
 			else:
-				await ctx.channel.send(url_list[0])
+				url_idx = random.randint(0, len(url_list))
+				await ctx.channel.send(url_list[url_idx])
 
 	
 	@commands.command()
-	async def add_to_fav_subs(self,ctx,sub):
+	async def add_to_favs(self,ctx,sub):
+		
 		pass
 
 	@commands.command()
@@ -54,11 +53,9 @@ class RedditCommands(commands.Cog):
 
 	#Helper Functions
 	def fetch_from_sub(self,sub):
-		url = 'https://oauth.reddit.com/' + sub + '/hot'
+		url = 'https://oauth.reddit.com/' + sub + '/?limit=100&t=month'
 		result = requests.get(url, headers = self.headers)
-		if result.status_code == 404:
-			return None
-
+		
 		print(result)
 		res = result.json()
 		url_list = []
