@@ -15,9 +15,9 @@ async def on_ready():
 @client.command(aliases= ['Hello', 'hi', 'Hi'])
 async def hello(ctx, user: discord.User = None):
     if(user != None):
-        await ctx.channel.send('Hello <@%s>!' %user.display_name)
+        await ctx.channel.send('Hello %s!' %user.display_name)
     else:
-        await ctx.channel.send('Hello <@%s>!' %ctx.author.display_name)
+        await ctx.channel.send('Hello %s!' %ctx.author.display_name)
 
 
 server_ping()
