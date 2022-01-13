@@ -23,6 +23,7 @@ class RedditCommands(commands.Cog):
 		self.res = requests.post('https://www.reddit.com/api/v1/access_token', auth = self.auth, data=self.data, headers=self.headers)
 		self.reddit_token = self.res.json()['access_token']
 		self.headers['Authorization'] = f'bearer {self.reddit_token}'
+		self.fav_subs = []
 
 
 	# Command Functions
@@ -33,15 +34,18 @@ class RedditCommands(commands.Cog):
 
 		else:
 			url_list = self.fetch_from_sub(sub)
-			if url_list == None:
-				await ctx.channel.send('Couldn\'t find ' + sub)
+			if url_list == None or len(url_list) < 1:
+				if len(url_list) < 1:
+					await ctx.channel.send('No hot posts to display')
+				else: 
+					await ctx.channel.send('Couldn\'t find ' + sub)
 			else:
 				await ctx.channel.send(url_list[0])
 
 	
 	@commands.command()
-	async def add(self,ctx,sub):
-		pass 
+	async def add_to_fav_subs(self,ctx,sub):
+		pass
 
 	@commands.command()
 	async def fetch(self,ctx, amount = 5, sub = None):

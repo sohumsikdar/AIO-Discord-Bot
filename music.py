@@ -40,6 +40,7 @@ class Music(commands.Cog):
 		
 		vc = ctx.voice_client
 		with youtube_dl.YoutubeDL(ytdl_format_options) as ydl:
+			ydl.cache.remove() 
 			info = ydl.extract_info(url, download = False)
 			url2 = info['formats'][0]['url']
 			source = await discord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
