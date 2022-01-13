@@ -7,7 +7,7 @@ client = discord.Client()
 client = commands.Bot(command_prefix= '>')
 
 
-cog_files = ['general']
+cog_files = ['general', 'music']
 
 for cog_file in cog_files: 
     client.load_extension(cog_file) 
