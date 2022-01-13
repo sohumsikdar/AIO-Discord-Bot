@@ -23,7 +23,7 @@ class RedditCommands(commands.Cog):
 		self.res = requests.post('https://www.reddit.com/api/v1/access_token', auth = self.auth, data=self.data, headers=self.headers)
 		self.reddit_token = self.res.json()['access_token']
 		self.headers['Authorization'] = f'bearer {self.reddit_token}'
-		self.fav_subs = []
+		self.fav_subs = set()
 
 
 	# Command Functions
@@ -34,7 +34,7 @@ class RedditCommands(commands.Cog):
 
 		else:
 			url_list = self.fetch_from_sub(sub)
-			if len(url_list) == 0:
+			if url_list == None or len(url_list) == 0:
 				await ctx.channel.send('Couldn\'t find ' + sub)
 			else:
 				url_idx = random.randint(0, len(url_list))
@@ -42,30 +42,74 @@ class RedditCommands(commands.Cog):
 
 	
 	@commands.command()
-	async def add_to_favs(self,ctx,sub):
-		
-		pass
+	async def favs(self, ctx, sub=None):
+		if(sub == None):
+			for sub in self.fav_subs:
+				await ctx.channel.send('https://www.reddit.com/' + sub)
+		else:
+			if sub.startswith('r/') == False:
+				await ctx.channel.send('Use correct subreddit formats like r/rickroll')
+				return
+
+			if sub in self.fav_subs:
+				self.fav_subs.remove(sub)
+				await ctx.channel.send(sub + ' deleted from your favs!')
+			else:
+				url_list = self.fetch_from_sub(sub)
+				if url_list==None or len(url_list)==0:
+					await ctx.channel.send('Couldn\'t find ' + sub)
+				else:
+					await ctx.channel.send(sub + ' added to your favs!')
+					self.fav_subs.add(sub)
+
 
 	@commands.command()
-	async def fetch(self,ctx, amount = 5, sub = None):
-		pass
+	async def fetch(self,ctx,sub=None,amount=5):
+		if sub==None and len(self.fav_subs) == 0:
+			await ctx.channel.send('Nothing to fetch from')
+		else:
+			if sub==None:
+				url_list = []
+				for sub in self.fav_subs:
+					res = self.fetch_from_sub(sub,10)
+					if res != None:
+						url_list.extend(res)
+
+				if len(url_list) == 0:
+					await ctx.channel.send('No posts to show!')
+				else:
+					for _ in range(0, amount):
+						url_idx = random.randint(0, len(url_list))
+						await ctx.channel.send(url_list[url_idx])
+
+			else:
+				if sub.startswith('r/') == False:
+					await ctx.channel.send('Use correct subreddit formats like r/rickroll')
+					return
+					
+				else:
+					url_list = self.fetch_from_sub(sub)
+					if url_list == None or len(url_list) == 0:
+						await ctx.channel.send('Couldn\'t find ' + sub)
+					else:
+						for _ in range(0, amount):
+							url_idx = random.randint(0, len(url_list))
+							await ctx.channel.send(url_list[url_idx])
 
 
 	#Helper Functions
-	def fetch_from_sub(self,sub):
-		url = 'https://oauth.reddit.com/' + sub + '/?limit=100&t=month'
+	def fetch_from_sub(self,sub,limit=100):
+		url = 'https://oauth.reddit.com/' + sub + '/?limit=' + str(limit) + '&t=month'
 		result = requests.get(url, headers = self.headers)
-		
-		print(result)
+		if result.status_code == 404:
+			return None
+
 		res = result.json()
 		url_list = []
 		for post in res['data']['children']:
 			url_list.append('https://www.reddit.com' + post['data']['permalink'])
 
 		return url_list
-
-
-
 
 
 def setup(client):
