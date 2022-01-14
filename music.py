@@ -21,10 +21,15 @@ class Music(commands.Cog):
 			await ctx.send("Music player already exists")
 	
 	@commands.command(aliases=['p'])
-	async def play(self, ctx, url : str):
+	async def play(self, ctx, *, url : str):
 		if 'youtube.com/' not in url:
 			url = self.fetch_url_from_youtube(url)
 			await ctx.channel.send(url)
+		else:
+			url_lst = url.split()
+			if len(url_lst) > 1:
+				await ctx.send("Either enter a link or keywords")
+				return
 
 		if ctx.author.voice is None:
 			await ctx.send("Not connected to a voice channel")
@@ -88,6 +93,8 @@ class Music(commands.Cog):
 		video_id = str(res['items'][0]['id']['videoId'])
 
 		url = 'https://www.youtube.com/watch?v=' + video_id
+		print(query_string)
+		print(url)
 		return url
 
 def setup(client):
