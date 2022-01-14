@@ -29,7 +29,7 @@ class RedditCommands(commands.Cog):
 	# Command Functions
 	@commands.command()
 	async def search(self,ctx,*,query):
-		if len(query) == 0:
+		if query == None:
 			await ctx.channel.send('I CAN\'T FETCH YOU THE ENTIRETY OF REDDIT!')
 			return
 
@@ -38,15 +38,31 @@ class RedditCommands(commands.Cog):
 			if url_list == None or len(url_list) == 0:
 				await ctx.channel.send('Couldn\'t find ' + query)
 			else:
-				await ctx.channel.send(url_list[0])
+				for url_idx in range(0, 5):
+					if(url_idx >= len(url_list)):
+						break
+					await ctx.channel.send(url_list[url_idx])
 
 		else:
-			url_list = self.fetch_from_sub(query)
-			if url_list == None or len(url_list) == 0:
-				await ctx.channel.send('Couldn\'t find ' + query)
+			query_list = query.split()
+			if len(query_list) == 1:
+				url_list = self.fetch_from_sub(query)
+				if url_list == None or len(url_list) == 0:
+					await ctx.channel.send('Couldn\'t find ' + query)
+				else:
+					url_idx = random.randint(0, len(url_list))
+					await ctx.channel.send(url_list[url_idx])
 			else:
-				url_idx = random.randint(0, len(url_list))
-				await ctx.channel.send(url_list[url_idx])
+				sub = query_list[0]
+				query_list.remove(sub)
+				url_list = self.search_in_subreddit(sub,query_list)
+				if url_list == None or len(url_list) == 0:
+					await ctx.channel.send('Couldn\'t find ' + query)
+				else:
+					for url_idx in range(0, 5):
+						if(url_idx >= len(url_list)):
+							break
+						await ctx.channel.send(url_list[url_idx])
 
 	
 	@commands.command()
@@ -128,7 +144,6 @@ class RedditCommands(commands.Cog):
 		for word in query_list:
 			search_string = search_string + word + '%20'
 
-		print(search_string)
 		result = requests.get(search_string, headers = self.headers)
 		if result.status_code == 404:
 			return None
@@ -136,6 +151,24 @@ class RedditCommands(commands.Cog):
 		res = result.json()
 		url_list = []
 		for post in res['data']['children']:
+			url_list.append('https://www.reddit.com' + post['data']['permalink'])
+
+		return url_list
+
+	def search_in_subreddit(self, sub, query_list):
+		search_string = 'https://oauth.reddit.com/' + sub + '/search/?q=' 
+		for word in query_list:
+			search_string = search_string + word + '%20'
+		
+		search_string = search_string + '&restrict_sr=1&sr_nsfw=&include_over_18=1'
+		result = requests.get(search_string, headers = self.headers)
+		if result.status_code == 404:
+			return None
+		print(search_string)
+		res = result.json()
+		url_list = []
+		for post in res['data']['children']:
+			# print('https://www.reddit.com' + post['data']['permalink'])
 			url_list.append('https://www.reddit.com' + post['data']['permalink'])
 
 		return url_list
