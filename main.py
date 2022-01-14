@@ -13,7 +13,6 @@ for cog_file in cog_files:
     client.load_extension(cog_file) 
     print("%s has loaded." % cog_file)
 
-
 @client.event
 async def on_ready():
     print('{0.user} logged in'.format(client))

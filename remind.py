@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-import discord
+import discord, asyncio
 import re
 from discord.ext import commands
 import dateutil.parser
@@ -14,13 +14,33 @@ class Remind(commands.Cog):
 		self.client = client
 
 	@commands.command()
-	async def timer(self,ctx,dur):
+	async def timer(self,ctx,*,dur):
+		val = 'You will be notified when timer ends. Other users can also be notified by reacting as ⏰. Users can also be notified in dm by reacting as 🗨️'
 		dur = parse(dur)
 		desc = str(timedelta(seconds=dur))
-		embed = discord.Embed(title = "Timer", description=desc, color = discord.Color.red())
-		embed.set_thumbnail('res/timer.png')
-		await ctx.send(embed = embed)
-
+		embed = discord.Embed(title = "Timer Added!", color = discord.Color.red())
+		embed.add_field(name= desc,value= val)
+		embed.set_thumbnail(url='https://previews.123rf.com/images/djvstock/djvstock1801/djvstock180109568/94114510-red-clock-with-yellow-background-vector-ilustration.jpg?fj=1')
+		msg = await ctx.send(embed = embed)
+		await msg.add_reaction("⏰")
+		users = set()
+    
+		while True:
+			await asyncio.sleep(1)
+			dur -= 1
+			if(dur == 0):
+				msg = await msg.channel.fetch_message(msg.id)
+				for reaction in msg.reactions:
+					async for user in reaction.users():
+						if (user.bot == False):
+							users.add(user.mention)
+				users.add(ctx.author.mention)
+				mentions = ""
+				for user in users:
+					mentions += str(user)+" "
+				await ctx.send(f"{mentions} Time's up!")
+				break
+			
 
 	@commands.command()
     #Usage: <title> (optional) by <date> on <time>
@@ -40,7 +60,7 @@ class Remind(commands.Cog):
 				if(details.find('by-')== -1):
 					dparam.insert(1,str(date.today()))
 				else:
-					dparam.append('2359')
+					dparam.append('23:59:59')
 
 			if(len(dparam) == 3):
 				if(details.find('for-') == -1):
@@ -49,21 +69,21 @@ class Remind(commands.Cog):
 					dparam.insert(1,str(date.today())) 
 				else:
 					dparam.append(dparam[2])
-					dparam[2] = '2359'
+					dparam[2] = '23:59:59'
 		
 		if(dparam[1] == ''):
 			await ctx.send('Incorrect Usage!')
 			return
-		
-		formatted_date = dateutil.parser.parse(dparam[1]+" "+dparam[2],fuzzy_with_tokens=False)
+		formatted_date = dateutil.parser.parse(dparam[1],fuzzy_with_tokens=False)
 		dparam[1] = str(formatted_date.date())
+		formatted_date = dateutil.parser.parse(dparam[1]+" "+dparam[2],fuzzy_with_tokens=False)
 		dparam[2] = str(formatted_date.time())
 
 		embed = discord.Embed(title = dparam[0].title(), description=dparam[3], color = discord.Color.blue())
 		embed.add_field(name = 'Due on: ', value = f'{dparam[1]} at {dparam[2]}', inline=False)
-		embed.add_field(name = 'Time left: ', value = '0s')
-		embed.add_field(name = 'Next alert in: ', value = '0s')
-		await ctx.send(embed = embed)
+		embed.add_field(name = 'Next alert in: ', value = '--')
+		msg = await ctx.send(embed = embed)
+		await msg.add_reaction("⏰")
 
 		
 

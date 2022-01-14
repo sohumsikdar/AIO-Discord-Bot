@@ -28,14 +28,22 @@ class RedditCommands(commands.Cog):
 
 	# Command Functions
 	@commands.command()
-	async def search(self,ctx,sub):
-		if sub.startswith('r/') == False:
-			await ctx.channel.send('Use correct subreddit formats like r/rickroll')
+	async def search(self,ctx,*,query):
+		if len(query) == 0:
+			await ctx.channel.send('I CAN\'T FETCH YOU THE ENTIRETY OF REDDIT!')
+			return
+
+		if query.startswith('r/') == False:
+			url_list = self.search_in_reddit(query)
+			if url_list == None or len(url_list) == 0:
+				await ctx.channel.send('Couldn\'t find ' + query)
+			else:
+				await ctx.channel.send(url_list[0])
 
 		else:
-			url_list = self.fetch_from_sub(sub)
+			url_list = self.fetch_from_sub(query)
 			if url_list == None or len(url_list) == 0:
-				await ctx.channel.send('Couldn\'t find ' + sub)
+				await ctx.channel.send('Couldn\'t find ' + query)
 			else:
 				url_idx = random.randint(0, len(url_list))
 				await ctx.channel.send(url_list[url_idx])
@@ -44,8 +52,12 @@ class RedditCommands(commands.Cog):
 	@commands.command()
 	async def favs(self, ctx, sub=None):
 		if(sub == None):
-			for sub in self.fav_subs:
-				await ctx.channel.send('https://www.reddit.com/' + sub)
+			if len(self.fav_subs) == 0:
+				await ctx.channel.send('No subs in your favs!')
+			
+			else:
+				for sub in self.fav_subs:
+					await ctx.channel.send('https://www.reddit.com/' + sub)
 		else:
 			if sub.startswith('r/') == False:
 				await ctx.channel.send('Use correct subreddit formats like r/rickroll')
@@ -95,8 +107,7 @@ class RedditCommands(commands.Cog):
 						for _ in range(0, amount):
 							url_idx = random.randint(0, len(url_list))
 							await ctx.channel.send(url_list[url_idx])
-
-
+		
 	#Helper Functions
 	def fetch_from_sub(self,sub,limit=100):
 		url = 'https://oauth.reddit.com/' + sub + '/?limit=' + str(limit) + '&t=month'
@@ -111,6 +122,23 @@ class RedditCommands(commands.Cog):
 
 		return url_list
 
+	def search_in_reddit(self,query):
+		search_string = 'https://oauth.reddit.com/search/?q='
+		query_list = query.split()
+		for word in query_list:
+			search_string = search_string + word + '%20'
+
+		print(search_string)
+		result = requests.get(search_string, headers = self.headers)
+		if result.status_code == 404:
+			return None
+		
+		res = result.json()
+		url_list = []
+		for post in res['data']['children']:
+			url_list.append('https://www.reddit.com' + post['data']['permalink'])
+
+		return url_list
 
 def setup(client):
 	client.add_cog(RedditCommands(client))
