@@ -1,12 +1,15 @@
 from distutils import command
 import discord
+import os
 from discord.ext import commands
 import youtube_dl
+import requests
 
 class Music(commands.Cog):
 	def __init__(self, client):
 		super().__init__()
 		self.client = client
+		self.ytb_api = os.environ['GOOGLE_API_KEY']
 		
 	@commands.command()
 	async def setup(self, ctx):
@@ -19,6 +22,10 @@ class Music(commands.Cog):
 	
 	@commands.command(aliases=['p'])
 	async def play(self, ctx, url : str):
+		if 'youtube.com/' not in url:
+			url = self.fetch_url_from_youtube(url)
+			await ctx.channel.send(url)
+
 		if ctx.author.voice is None:
 			await ctx.send("Not connected to a voice channel")
 		voice_channel = ctx.author.voice.channel
@@ -68,6 +75,20 @@ class Music(commands.Cog):
 	async def disconnect(self, ctx):
 		await ctx.voice_client.disconnect()
 		await ctx.channel.send("Stopped the playlist")
+
+
+	def fetch_url_from_youtube(self,query):
+		query_list = query.split()
+		query_string = 'https://www.googleapis.com/youtube/v3/search?part=snippet&key=' + self.ytb_api + '&type=video&q='
+		for word in query_list:
+			query_string = query_string + word + '%20'
+
+
+		res = requests.get(query_string).json()
+		video_id = str(res['items'][0]['id']['videoId'])
+
+		url = 'https://www.youtube.com/watch?v=' + video_id
+		return url
 
 def setup(client):
     client.add_cog(Music(client))
