@@ -1,3 +1,4 @@
+from distutils import command
 import discord
 from discord.ext import commands
 import youtube_dl
@@ -6,15 +7,22 @@ class Music(commands.Cog):
 	def __init__(self, client):
 		super().__init__()
 		self.client = client
-
+		
+	@commands.command()
+	async def setup(self, ctx):
+		channel = discord.utils.get(ctx.guild.channels, name='aio-music-player')
+		if channel is None:
+			channel1 = await ctx.guild.create_text_channel('AIO music player')
+			await channel1.send('Text in channel')
+		else:
+			await ctx.send("Music player already exists")
+	
 	@commands.command(aliases=['p'])
 	async def play(self, ctx, url : str):
 		if ctx.author.voice is None:
 			await ctx.send("Not connected to a voice channel")
 		voice_channel = ctx.author.voice.channel
     	
-		await ctx.guild.change_voice_state(channel=voice_channel, self_mute=False, self_deaf=True)
-
 		if ctx.voice_client is None:
 			await voice_channel.connect()
 		else:

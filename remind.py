@@ -1,10 +1,11 @@
-from datetime import date, timedelta
-import discord, asyncio
+from datetime import date, timedelta, datetime
+import discord, asyncio, pytz
 import re
 from discord.ext import commands
 import dateutil.parser
 from pytimeparse import parse
 
+IST = pytz.timezone('Asia/Kolkata')
 client = discord.Client()
 client = commands.Bot(command_prefix= '>')
 
@@ -47,6 +48,7 @@ class Remind(commands.Cog):
     # (can be anyone of these but at least one) for <details> (optional)
 	async def remind(self,ctx, *, details = ''):
 		dparam = []
+		durations = [86400,3600,600,0]
 		if(details.find('at-') == -1 and details.find('by-') == -1):
 			await ctx.send('Need a due date/time!')
 			return
@@ -79,12 +81,59 @@ class Remind(commands.Cog):
 		formatted_date = dateutil.parser.parse(dparam[1]+" "+dparam[2],fuzzy_with_tokens=False)
 		dparam[2] = str(formatted_date.time())
 
-		embed = discord.Embed(title = dparam[0].title(), description=dparam[3], color = discord.Color.blue())
-		embed.add_field(name = 'Due on: ', value = f'{dparam[1]} at {dparam[2]}', inline=False)
-		embed.add_field(name = 'Next alert in: ', value = '--')
+		deadline_datetime = IST.localize(formatted_date)
+
+		dur = (deadline_datetime - datetime.now(IST)).total_seconds()
+		idx = 0
+		for idx in range(4):
+			if(dur > durations[idx]):
+				break
+
+		if(idx < 3):
+			next_alert = int(dur-durations[idx+1])
+		else:
+			next_alert = int(dur)
+
+		embed = self.get_embed(dparam,next_alert)
 		msg = await ctx.send(embed = embed)
 		await msg.add_reaction("⏰")
 
+		while(idx < 4):
+			await asyncio.sleep(dur-durations[idx])
+			dur = durations[idx]
+			if(idx < 3):
+				next_alert = int(dur-durations[idx+1])
+			else:
+				next_alert = "Deadline Up!"
+			embed = self.get_embed(dparam,next_alert)
+			users = set()
+			msg = await msg.channel.fetch_message(msg.id)
+			for reaction in msg.reactions:
+				async for user in reaction.users():
+					if (user.bot == False):
+						users.add(user.mention)
+			users.add(ctx.author.mention)
+			mentions = ""
+			for user in users:
+				mentions += str(user)+" "
+			await ctx.send(f"{mentions}",embed = embed)
+			idx += 1	
+
+	def get_embed(self,dparam,next_alert):
+		embed = discord.Embed(title = "Reminder: "+dparam[0].title(), description=dparam[3], color = discord.Color.blue())
+		embed.add_field(name = 'Due on: ', value = f'{dparam[1]} at {dparam[2]}', inline=False)
+		embed.add_field(name = 'Next alert in: ', value = self.get_formatted(next_alert))
+		return embed
+
+	def get_formatted(self,next_alert):
+		day = next_alert // (24 * 3600)
+		next_alert = next_alert % (24 * 3600)
+		hour = next_alert // 3600
+		next_alert %= 3600
+		minutes = next_alert // 60
+		next_alert %= 60
+		seconds = next_alert
+		return str(day)+"d "+str(hour)+"h "+str(minutes)+"m "+str(seconds)+"s "
 		
 
 def setup(client):
