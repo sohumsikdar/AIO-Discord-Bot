@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 import discord
 import re
 from discord.ext import commands
 import dateutil.parser
+from pytimeparse import parse
 
 client = discord.Client()
 client = commands.Bot(command_prefix= '>')
@@ -11,6 +12,15 @@ class Remind(commands.Cog):
 	def __init__(self,client):
 		super().__init__()
 		self.client = client
+
+	@commands.command()
+	async def timer(self,ctx,dur):
+		dur = parse(dur)
+		desc = str(timedelta(seconds=dur))
+		embed = discord.Embed(title = "Timer", description=desc, color = discord.Color.red())
+		embed.set_thumbnail('res/timer.png')
+		await ctx.send(embed = embed)
+
 
 	@commands.command()
     #Usage: <title> (optional) by <date> on <time>
