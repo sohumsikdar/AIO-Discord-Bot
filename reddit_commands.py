@@ -93,7 +93,7 @@ class RedditCommands(commands.Cog):
 
 	@commands.command()
 	async def fetch(self,ctx,sub=None):
-		amount = 5
+		amount = 1
 		if sub==None and len(self.fav_subs) == 0:
 			await ctx.channel.send('Nothing to fetch from')
 		else:
