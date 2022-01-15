@@ -24,6 +24,7 @@ class Music(commands.Cog):
 	async def play(self, ctx, *, url : str):
 		if 'youtube.com/' not in url:
 			url = self.fetch_url_from_youtube(url)
+			await ctx.send(url)
 		else:
 			url_lst = url.split()
 			if len(url_lst) > 1:
