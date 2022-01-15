@@ -24,7 +24,6 @@ class Music(commands.Cog):
 	async def play(self, ctx, *, url : str):
 		if 'youtube.com/' not in url:
 			url = self.fetch_url_from_youtube(url)
-			await ctx.channel.send(url)
 		else:
 			url_lst = url.split()
 			if len(url_lst) > 1:
@@ -42,6 +41,8 @@ class Music(commands.Cog):
 		
 		ytdl_format_options = {
         'format': 'bestaudio/best',
+		'extractaudio': True,
+        'audioformat': 'mp3',
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
         'restrictfilenames': True,
         'noplaylist': True,
