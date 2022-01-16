@@ -24,65 +24,75 @@ class Remind(commands.Cog):
 		embed.set_thumbnail(url='https://previews.123rf.com/images/djvstock/djvstock1801/djvstock180109568/94114510-red-clock-with-yellow-background-vector-ilustration.jpg?fj=1')
 		msg = await ctx.send(embed = embed)
 		await msg.add_reaction("⏰")
-		users = set()
+		await msg.add_reaction("🗨️")
     
 		while True:
 			await asyncio.sleep(1)
 			dur -= 1
 			if(dur == 0):
 				msg = await msg.channel.fetch_message(msg.id)
+
+				users_to_mention = set()
+				users_to_dm = set()
+
 				for reaction in msg.reactions:
-					async for user in reaction.users():
-						if (user.bot == False):
-							users.add(user.mention)
-				users.add(ctx.author.mention)
+					if(reaction.emoji == "⏰"):
+						async for user in reaction.users():
+							if (user.bot == False):
+								users_to_mention.add(user.mention)
+						
+					elif (reaction.emoji == "🗨️"):
+						async for user in reaction.users():
+							if (user.bot == False):
+								users_to_dm.add(user)
+
+				users_to_mention.add(ctx.author.mention)
 				mentions = ""
-				for user in users:
+				for user in users_to_mention:
 					mentions += str(user)+" "
 				await ctx.send(f"{mentions} Time's up!")
+
+				for user in users_to_dm:
+					await user.send(f"One of your timer for duration `{desc}` elapsed!")
+
 				break
 			
 
 	@commands.command()
-    #Usage: <title> (optional) by <date> on <time>
+    #Usage: <title> (optional) by <date> <time>
     # (can be anyone of these but at least one) for <details> (optional)
 	async def remind(self,ctx, *, details = ''):
 		dparam = []
 		durations = [86400,3600,600,0]
-		if(details.find('at-') == -1 and details.find('by-') == -1):
-			await ctx.send('Need a due date/time!')
+		if(details.find('by-') == -1):
+			await ctx.send('Dude! When do you want me to remind you?')
 			return
-		else:
-			dparam = re.split('by-|at-|for-', details)
-			dparam = [i.strip() for i in dparam]
-			if(dparam[0] == ''):
-				dparam[0] = 'No Title'
 
-			if(len(dparam) == 2):
-				if(details.find('by-')== -1):
-					dparam.insert(1,str(date.today()))
-				else:
-					dparam.append('23:59:59')
+		dparam = re.split('by-|for-', details)
+		dparam = [i.strip() for i in dparam]
 
-			if(len(dparam) == 3):
-				if(details.find('for-') == -1):
-					dparam.append('No Description')
-				elif(details.find('by-') == -1):
-					dparam.insert(1,str(date.today())) 
+		reminder = Reminder()
+
+		if(dparam[0] != ''):
+			reminder.set_title(dparam[0])
+
+		try:
+			if(details.find('for-') != -1):
+				if (details.find('for-') > details.find('by-')):
+					reminder.set_desc(dparam[2])
+					reminder.set_datetime(dparam[1])
 				else:
-					dparam.append(dparam[2])
-					dparam[2] = '23:59:59'
-		
-		if(dparam[1] == ''):
-			await ctx.send('Incorrect Usage!')
+					reminder.set_desc(dparam[1])
+					reminder.set_datetime(dparam[2])
+
+			else:
+				reminder.set_datetime(dparam[1])
+
+		except:
+			await ctx.send("Cannot understand the date or time you have given!")
 			return
-		formatted_date = dateutil.parser.parse(dparam[1],fuzzy_with_tokens=False)
-		dparam[1] = str(formatted_date.date())
-		formatted_date = dateutil.parser.parse(dparam[1]+" "+dparam[2],fuzzy_with_tokens=False)
-		dparam[2] = str(formatted_date.time())
 
-		deadline_datetime = IST.localize(formatted_date)
-
+		deadline_datetime = IST.localize(reminder.get_datetime())
 		dur = (deadline_datetime - datetime.now(IST)).total_seconds()
 		idx = 0
 		for idx in range(4):
@@ -94,38 +104,112 @@ class Remind(commands.Cog):
 		else:
 			next_alert = int(dur)
 
-		embed = self.get_embed(dparam,next_alert)
+		embed = reminder.get_embed(next_alert)
 		msg = await ctx.send(embed = embed)
 		await msg.add_reaction("⏰")
+		await msg.add_reaction("🗨️")
+		await msg.add_reaction("❌")
 
 		while(idx < 4):
+			if(dur == 0):
+				idx = 3
+				continue
+
 			await asyncio.sleep(dur-durations[idx])
 			dur = durations[idx]
 			if(idx < 3):
 				next_alert = int(dur-durations[idx+1])
 			else:
-				next_alert = "Deadline Up!"
-			embed = self.get_embed(dparam,next_alert)
-			users = set()
+				next_alert = ""
+			embed = reminder.get_embed(next_alert)
+
 			msg = await msg.channel.fetch_message(msg.id)
+			users_to_mention = set()
+			users_to_dm = set()
 			for reaction in msg.reactions:
-				async for user in reaction.users():
-					if (user.bot == False):
-						users.add(user.mention)
-			users.add(ctx.author.mention)
+				if(reaction.emoji == "⏰"):
+					async for user in reaction.users():
+						if (user.bot == False):
+							users_to_mention.add(user.mention)
+					
+				elif (reaction.emoji == "🗨️"):
+					async for user in reaction.users():
+						if (user.bot == False):
+							users_to_dm.add(user)
+
+			users_to_mention.add(ctx.author.mention)
 			mentions = ""
-			for user in users:
+			for user in users_to_mention:
 				mentions += str(user)+" "
 			await ctx.send(f"{mentions}",embed = embed)
+
+			for user in users_to_dm:
+				await user.send(embed = embed)
+
 			idx += 1	
 
-	def get_embed(self,dparam,next_alert):
-		embed = discord.Embed(title = "Reminder: "+dparam[0].title(), description=dparam[3], color = discord.Color.blue())
-		embed.add_field(name = 'Due on: ', value = f'{dparam[1]} at {dparam[2]}', inline=False)
+	@commands.Cog.listener()
+	async def on_raw_reaction_add(self,payload):
+		msg_id = payload.message_id
+		emoji = payload.emoji.name
+		channel = self.client.get_channel(payload.channel_id)
+		user = await self.client.fetch_user(payload.user_id)
+		if(emoji == "❌" and user.bot == False):
+			await channel.send(f"{user.name} pressed {emoji} on message")
+			
+
+def setup(client):
+    client.add_cog(Remind(client))
+
+
+class Reminder():
+	def __init__(self):
+		self.title = "No Title"
+		self.due_datetime = None
+		self.description = "No Description"
+		self.active = True
+		self.list_of_msg_id = []
+
+	def inactivate(self):
+		self.active = False
+
+	def is_active(self):
+		return self.active
+
+	def __str__(self):
+		return self.title + " by- " + str(self.due_datetime) + " for- "+ self.description
+
+	def set_title(self,title_str):
+		self.title = title_str
+	
+	def set_desc(self,desc_str):
+		self.description = desc_str
+	
+	def set_datetime(self,datetime_str):
+		try:
+			formatted_date = dateutil.parser.parse(datetime_str,fuzzy_with_tokens=False)
+			try:
+				formatted_date2 = dateutil.parser.parse(datetime_str+" 1 jan 1979",fuzzy_with_tokens=False)
+				if(formatted_date.date() != formatted_date2.date()):
+					self.due_datetime = datetime.combine(datetime.now(IST).date(),formatted_date.time())
+
+			except:
+				self.due_datetime = formatted_date
+		except:
+			raise Exception()
+	
+	def get_datetime(self):
+		return self.due_datetime
+
+	def get_embed(self,next_alert):
+		embed = discord.Embed(title = "Reminder: "+self.title.title(), description=self.description, color = discord.Color.blue())
+		embed.add_field(name = 'Due on: ', value = f'{str(self.due_datetime.date())} at {str(self.due_datetime.time())}', inline=False)
 		embed.add_field(name = 'Next alert in: ', value = self.get_formatted(next_alert))
 		return embed
 
 	def get_formatted(self,next_alert):
+		if(next_alert == ""):
+			return "Deadline's up!"
 		day = next_alert // (24 * 3600)
 		next_alert = next_alert % (24 * 3600)
 		hour = next_alert // 3600
@@ -134,7 +218,3 @@ class Remind(commands.Cog):
 		next_alert %= 60
 		seconds = next_alert
 		return str(day)+"d "+str(hour)+"h "+str(minutes)+"m "+str(seconds)+"s "
-		
-
-def setup(client):
-    client.add_cog(Remind(client))

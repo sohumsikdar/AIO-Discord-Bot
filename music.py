@@ -34,6 +34,7 @@ class Music(commands.Cog):
 		self.client = client
 		self.ytb_api = os.environ['GOOGLE_API_KEY']
 		self.song_q = []
+		self.song_d = []
 		# self.generate()
 		
 	# def generate(self):
@@ -105,6 +106,18 @@ class Music(commands.Cog):
 		await ctx.voice_client.disconnect()
 		await ctx.channel.send("Stopped the playlist")
 
+	@commands.command(aliases = ['q'])
+	async def queue(self, ctx):
+		if len(self.song_q) == 0:
+			return await ctx.send("There are currently no songs in the queue.")
+		embed = discord.Embed(title="Song Queue", description="", colour=discord.Colour.dark_gold())
+		i = 1
+		for url in self.song_d:
+			embed.description += f"{i}) {url}\n"
+			i += 1
+			
+		embed.set_footer(text="Thanks for using me!")
+		await ctx.send(embed=embed)
 
 	def fetch_url_from_youtube(self,query):
 		query_list = query.split()
@@ -115,7 +128,11 @@ class Music(commands.Cog):
 
 		res = requests.get(query_string).json()
 		video_id = str(res['items'][0]['id']['videoId'])
-
+		video_title = str(res['items'][0]['snippet']['title'])
+		video_channel = str(res['items'][0]['snippet']['channelTitle'])
+		thumbnail_url = str(res['items'][0]['snippet']['thumbnails']['high']['url'])
+		self.song_d.append(video_title)
+		print(video_title)
 		url = 'https://www.youtube.com/watch?v=' + video_id
 		print(query_string)
 		print(url)
