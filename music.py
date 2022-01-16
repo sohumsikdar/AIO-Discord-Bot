@@ -1,13 +1,48 @@
 from distutils import command
 import discord
+import os
 from discord.ext import commands
 import youtube_dl
+import requests
+import asyncio
+
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+	'extractaudio': True,
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+ffmpeg_options = {
+    'options': '-vn',
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+}
+
+ydl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class Music(commands.Cog):
 	def __init__(self, client):
 		super().__init__()
 		self.client = client
+		self.ytb_api = os.environ['GOOGLE_API_KEY']
+		self.song_q = []
+		self.song_d = []
+		# self.generate()
 		
+	# def generate(self):
+	# 	for guild in self.client.guilds:
+	# 		self.song_q[guild.id] = []
+	# 		print('hello')
+	# 		print(guild.id)
+	
 	@commands.command()
 	async def setup(self, ctx):
 		channel = discord.utils.get(ctx.guild.channels, name='aio-music-player')
@@ -17,42 +52,44 @@ class Music(commands.Cog):
 		else:
 			await ctx.send("Music player already exists")
 	
+	async def check_q(self, ctx):
+		if len(self.song_q) > 0:
+			ctx.voice_client.stop()
+			await self.now_playing(ctx, self.song_q[0])
+			self.song_q = self.song_q[1:]
+
 	@commands.command(aliases=['p'])
-	async def play(self, ctx, url : str):
+	async def play(self, ctx, *, url : str):
+		if 'youtube.com/' not in url:
+			url = self.fetch_url_from_youtube(url)
+		else:
+			url_lst = url.split()
+			if len(url_lst) > 1:
+				await ctx.send("Either enter a link or keywords")
+				return
+
 		if ctx.author.voice is None:
 			await ctx.send("Not connected to a voice channel")
+
 		voice_channel = ctx.author.voice.channel
     	
 		if ctx.voice_client is None:
 			await voice_channel.connect()
-		else:
-			await ctx.voice_client.move_to(voice_channel)
+		elif ctx.voice_client.channel != voice_channel:
+			await ctx.send("You are not in the same voice channel!")
+			return
 		
-		ytdl_format_options = {
-        'format': 'bestaudio/best',
-        'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-        'restrictfilenames': True,
-        'noplaylist': True,
-        'nocheckcertificate': True,
-        'ignoreerrors': False,
-        'logtostderr': False,
-        'quiet': True,
-        'no_warnings': True,
-        'default_search': 'auto',
-        'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
-    }
-		ffmpeg_options = {
-      'options': '-vn',
-      "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-    }
+		ydl.cache.remove() 
+		info = ydl.extract_info(url, download = False)
+		url = info['formats'][0]['url']
+		if ctx.voice_client.source is not None:
+			queue_len = len(self.song_q)
+			self.song_q.append(url)
+		await self.now_playing(ctx, url)
 		
-		vc = ctx.voice_client
-		with youtube_dl.YoutubeDL(ytdl_format_options) as ydl:
-			ydl.cache.remove() 
-			info = ydl.extract_info(url, download = False)
-			url2 = info['formats'][0]['url']
-			source = await discord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
-			vc.play(source)
+	async def now_playing(self, ctx, url):
+		source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(url, **ffmpeg_options))
+		ctx.voice_client.play(source, after=lambda error: self.client.loop.create_task(self.check_q(ctx)))
 	
 	@commands.command()
 	async def pause(self, ctx):
@@ -68,6 +105,38 @@ class Music(commands.Cog):
 	async def disconnect(self, ctx):
 		await ctx.voice_client.disconnect()
 		await ctx.channel.send("Stopped the playlist")
+
+	@commands.command(aliases = ['q'])
+	async def queue(self, ctx):
+		if len(self.song_q) == 0:
+			return await ctx.send("There are currently no songs in the queue.")
+		embed = discord.Embed(title="Song Queue", description="", colour=discord.Colour.dark_gold())
+		i = 1
+		for url in self.song_d:
+			embed.description += f"{i}) {url}\n"
+			i += 1
+			
+		embed.set_footer(text="Thanks for using me!")
+		await ctx.send(embed=embed)
+
+	def fetch_url_from_youtube(self,query):
+		query_list = query.split()
+		query_string = 'https://www.googleapis.com/youtube/v3/search?part=snippet&key=' + self.ytb_api + '&type=video&q='
+		for word in query_list:
+			query_string = query_string + word + '%20'
+
+
+		res = requests.get(query_string).json()
+		video_id = str(res['items'][0]['id']['videoId'])
+		video_title = str(res['items'][0]['snippet']['title'])
+		video_channel = str(res['items'][0]['snippet']['channelTitle'])
+		thumbnail_url = str(res['items'][0]['snippet']['thumbnails']['high']['url'])
+		self.song_d.append(video_title)
+		print(video_title)
+		url = 'https://www.youtube.com/watch?v=' + video_id
+		print(query_string)
+		print(url)
+		return url
 
 def setup(client):
     client.add_cog(Music(client))

@@ -28,8 +28,8 @@ class RedditCommands(commands.Cog):
 
 	# Command Functions
 	@commands.command()
-	async def search(self,ctx,*,query):
-		if query == None:
+	async def search(self,ctx,*,query=''):
+		if query == '':
 			await ctx.channel.send('I CAN\'T FETCH YOU THE ENTIRETY OF REDDIT!')
 			return
 
@@ -50,8 +50,8 @@ class RedditCommands(commands.Cog):
 				if url_list == None or len(url_list) == 0:
 					await ctx.channel.send('Couldn\'t find ' + query)
 				else:
-					url_idx = random.randint(0, len(url_list))
-					await ctx.channel.send(url_list[url_idx])
+					url_idx = random.randint(1, len(url_list))
+					await ctx.channel.send(url_list[url_idx - 1])
 			else:
 				sub = query_list[0]
 				query_list.remove(sub)
@@ -64,36 +64,11 @@ class RedditCommands(commands.Cog):
 							break
 						await ctx.channel.send(url_list[url_idx])
 
-	
-	@commands.command()
-	async def favs(self, ctx, sub=None):
-		if(sub == None):
-			if len(self.fav_subs) == 0:
-				await ctx.channel.send('No subs in your favs!')
-			
-			else:
-				for sub in self.fav_subs:
-					await ctx.channel.send('https://www.reddit.com/' + sub)
-		else:
-			if sub.startswith('r/') == False:
-				await ctx.channel.send('Use correct subreddit formats like r/rickroll')
-				return
-
-			if sub in self.fav_subs:
-				self.fav_subs.remove(sub)
-				await ctx.channel.send(sub + ' deleted from your favs!')
-			else:
-				url_list = self.fetch_from_sub(sub)
-				if url_list==None or len(url_list)==0:
-					await ctx.channel.send('Couldn\'t find ' + sub)
-				else:
-					await ctx.channel.send(sub + ' added to your favs!')
-					self.fav_subs.add(sub)
-
 
 	@commands.command()
-	async def fetch(self,ctx,sub=None,amount=5):
-		if sub==None and len(self.fav_subs) == 0:
+	async def fetch(self,ctx,sub=None):
+		amount = 1
+		if sub==None:
 			await ctx.channel.send('Nothing to fetch from')
 		else:
 			if sub==None:
@@ -107,8 +82,8 @@ class RedditCommands(commands.Cog):
 					await ctx.channel.send('No posts to show!')
 				else:
 					for _ in range(0, amount):
-						url_idx = random.randint(0, len(url_list))
-						await ctx.channel.send(url_list[url_idx])
+						url_idx = random.randint(1, len(url_list))
+						await ctx.channel.send(url_list[url_idx - 1])
 
 			else:
 				if sub.startswith('r/') == False:
@@ -121,8 +96,8 @@ class RedditCommands(commands.Cog):
 						await ctx.channel.send('Couldn\'t find ' + sub)
 					else:
 						for _ in range(0, amount):
-							url_idx = random.randint(0, len(url_list))
-							await ctx.channel.send(url_list[url_idx])
+							url_idx = random.randint(1, len(url_list))
+							await ctx.channel.send(url_list[url_idx - 1])
 		
 	#Helper Functions
 	def fetch_from_sub(self,sub,limit=100):
@@ -172,6 +147,7 @@ class RedditCommands(commands.Cog):
 			url_list.append('https://www.reddit.com' + post['data']['permalink'])
 
 		return url_list
+
 
 def setup(client):
 	client.add_cog(RedditCommands(client))
