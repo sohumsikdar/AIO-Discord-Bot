@@ -130,10 +130,6 @@ class Music(commands.Cog):
 
 		res = requests.get(query_string).json()
 		video_id = str(res['items'][0]['id']['videoId'])
-		video_title = str(res['items'][0]['snippet']['title'])
-		video_channel = str(res['items'][0]['snippet']['channelTitle'])
-		thumbnail_url = str(res['items'][0]['snippet']['thumbnails']['high']['url'])
-		print(video_title)
 		url = 'https://www.youtube.com/watch?v=' + video_id
 		print(query_string)
 		print(url)
