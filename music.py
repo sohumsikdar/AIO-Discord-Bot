@@ -35,6 +35,7 @@ class Music(commands.Cog):
 		self.ytb_api = os.environ['GOOGLE_API_KEY']
 		self.song_q = []
 		self.song_d = []
+		self.curr_track = []
 		# self.generate()
 		
 	# def generate(self):
@@ -55,6 +56,7 @@ class Music(commands.Cog):
 	async def check_q(self, ctx):
 		if len(self.song_q) > 0:
 			ctx.voice_client.stop()
+			self.curr_track.append(self.song_d[0])
 			await self.now_playing(ctx, self.song_q[0])
 			self.song_q = self.song_q[1:]
 			self.song_d = self.song_d[1:]
@@ -113,10 +115,11 @@ class Music(commands.Cog):
 		if len(self.song_q) == 0:
 			return await ctx.send("There are currently no songs in the queue.")
 		embed = discord.Embed(title="Song Queue", description="", colour=discord.Colour.dark_blue())
+		embed.set_thumbnail(url=self.curr_track[0]['thumbnail'])
+		embed.add_field(name="Currently playing track: ", value=self.curr_track[0]['title'])
 		i = 1
 		for j in self.song_d:
 			embed.description += f"{i}) {j['title']}\n"
-			embed.set_thumbnail(url=j['thumbnail'])
 			i += 1
 			
 		embed.set_footer(text="Songs in queue")

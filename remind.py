@@ -1,5 +1,5 @@
 from datetime import date, timedelta, datetime
-import discord, asyncio, pytz
+import discord, asyncio, pytz, DiscordUtils
 import re
 from discord.ext import commands
 import dateutil.parser
@@ -32,25 +32,39 @@ class Remind(commands.Cog):
 		if (self.reminder_queue == []):
 			await ctx.send("There are no reminders!")
 			return
-		
-		reminder_title_list = ""
-		reminder_due_list = ""
-		reminder_author_list = ""
-		sno = 0
-		while(sno < len(self.reminder_queue)):
-			reminder = self.reminder_queue[sno]
-			reminder_title_list += str(sno+1)+"). "+reminder.get_title()+"\n"
-			reminder_due_list += str(reminder.get_datetime().date())+" at "+str(reminder.get_datetime().time())+"\n"
-			reminder_author_list += str(reminder.get_author().display_name)+"\n"
-			sno += 1
 
-		embed = discord.Embed(title = "Reminders", color = discord.Color.dark_gold())
-		embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
-		embed.add_field(name = "Sno. & Title",value= reminder_title_list)
-		embed.add_field(name = "Due", value= reminder_due_list)
-		embed.add_field(name = "Author", value= reminder_author_list)
-		embed.set_footer(text="You can remove a reminder using >delrm <Sno.>")
-		await ctx.send(embed = embed)
+		page_size = 10
+		sno = 0
+		embed_list = []
+		while(sno < len(self.reminder_queue)):		
+			reminder_title_list = ""
+			reminder_due_list = ""
+			reminder_author_list = ""
+			for i in range(page_size):
+				reminder = self.reminder_queue[sno]
+				reminder_title_list += str(sno+1)+"). "+reminder.get_title()+"\n"
+				reminder_due_list += str(reminder.get_datetime().date())+" at "+str(reminder.get_datetime().time())+"\n"
+				reminder_author_list += str(reminder.get_author().display_name)+"\n"
+				sno += 1
+				if(sno == len(self.reminder_queue)):
+					break
+
+			embed = discord.Embed(title = "Reminders", color = discord.Color.dark_gold())
+			embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+			embed.add_field(name = "Sno. & Title",value= reminder_title_list)
+			embed.add_field(name = "Due", value= reminder_due_list)
+			embed.add_field(name = "Author", value= reminder_author_list)
+			embed.set_footer(text="You can remove a reminder using >delrm <Sno.>")
+			embed_list.append(embed)
+		
+		paginator = DiscordUtils.Pagination.CustomEmbedPaginator(ctx, remove_reactions=True)
+		paginator.add_reaction('⏮️', "first")
+		paginator.add_reaction('⏪', "back")
+		paginator.add_reaction('🔐', "lock")
+		paginator.add_reaction('⏩', "next")
+		paginator.add_reaction('⏭️', "last")
+		await paginator.run(embed_list)
+
 
 	@commands.command()
 	async def timer(self,ctx,*,dur):
