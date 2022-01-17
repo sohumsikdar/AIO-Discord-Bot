@@ -86,7 +86,7 @@ class Music(commands.Cog):
 		if ctx.voice_client.source is not None:
 			queue_len = len(self.song_q)
 			self.song_q.append(url)
-			self.song_d.append(info['title'])
+			self.song_d.append(info)
 		await self.now_playing(ctx, url)
 		
 	async def now_playing(self, ctx, url):
@@ -112,13 +112,14 @@ class Music(commands.Cog):
 	async def queue(self, ctx):
 		if len(self.song_q) == 0:
 			return await ctx.send("There are currently no songs in the queue.")
-		embed = discord.Embed(title="Song Queue", description="", colour=discord.Colour.dark_gold())
+		embed = discord.Embed(title="Song Queue", description="", colour=discord.Colour.dark_blue())
 		i = 1
-		for url in self.song_d:
-			embed.description += f"{i}) {url}\n"
+		for j in self.song_d:
+			embed.description += f"{i}) {j['title']}\n"
+			embed.set_thumbnail(url=j['thumbnail'])
 			i += 1
 			
-		embed.set_footer(text="Thanks for using me!")
+		embed.set_footer(text="Songs in queue")
 		await ctx.send(embed=embed)
 
 	def fetch_url_from_youtube(self,query):

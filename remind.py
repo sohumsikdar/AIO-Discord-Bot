@@ -18,6 +18,41 @@ class Remind(commands.Cog):
 		self.reminder_queue = []
 
 	@commands.command()
+	async def delrm(self,ctx,sno):
+		try:
+			sno = int(sno)-1
+			reminder = self.reminder_queue[sno]
+			self.inactivate_reminder(reminder)
+			await ctx.send(f"{ctx.author.mention} has closed the reminder!", embed = reminder.get_embed(""))
+		except:
+			await ctx.send("There is no reminder with the given Sno.!")
+
+	@commands.command()
+	async def rmq(self,ctx):
+		if (self.reminder_queue == []):
+			await ctx.send("There are no reminders!")
+			return
+		
+		reminder_title_list = ""
+		reminder_due_list = ""
+		reminder_author_list = ""
+		sno = 0
+		while(sno < len(self.reminder_queue)):
+			reminder = self.reminder_queue[sno]
+			reminder_title_list += str(sno+1)+"). "+reminder.get_title()+"\n"
+			reminder_due_list += str(reminder.get_datetime().date())+" at "+str(reminder.get_datetime().time())+"\n"
+			reminder_author_list += str(reminder.get_author().display_name)+"\n"
+			sno += 1
+
+		embed = discord.Embed(title = "Reminders", color = discord.Color.dark_gold())
+		embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+		embed.add_field(name = "Sno. & Title",value= reminder_title_list)
+		embed.add_field(name = "Due", value= reminder_due_list)
+		embed.add_field(name = "Author", value= reminder_author_list)
+		embed.set_footer(text="You can remove a reminder using >delrm <Sno.>")
+		await ctx.send(embed = embed)
+
+	@commands.command()
 	async def timer(self,ctx,*,dur):
 		try:
 			dur = parse(dur)
@@ -88,7 +123,7 @@ class Remind(commands.Cog):
 		dparam = re.split('by-|for-', details)
 		dparam = [i.strip() for i in dparam]
 
-		reminder = Reminder()
+		reminder = Reminder(ctx.author)
 
 		if(dparam[0] != ''):
 			reminder.set_title(dparam[0])
@@ -135,8 +170,6 @@ class Remind(commands.Cog):
 		msg = await ctx.send(embed = embed)
 		await msg.add_reaction("⏰")
 		await msg.add_reaction("🗨️")
-		await msg.add_reaction("❌")
-		reminder.add_to_id_list(msg.id)
 		self.reminder_queue.append(reminder)
 
 		while(idx < 4):
@@ -175,41 +208,12 @@ class Remind(commands.Cog):
 			mentions = ""
 			for user in users_to_mention:
 				mentions += str(user)+" "
-			new_msg = await ctx.send(f"{mentions}",embed = embed)
-
-			reminder.add_to_id_list(new_msg.id)
-
+			await ctx.send(f"{mentions}",embed = embed)
 			for user in users_to_dm:
 				await user.send(embed = embed)
 
 			idx += 1	
-		self.inactivate_reminder(reminder)
-
-	@commands.Cog.listener()
-	async def on_raw_reaction_add(self,payload):
-		user = await self.client.fetch_user(payload.user_id)
-		if (user.bot == True):
-			return
-
-		msg_id = payload.message_id
-		reminder_obj = None
-		for reminder in self.reminder_queue:
-			for reminder_msg_id in reminder.msg_ids():
-				if (msg_id == reminder_msg_id):
-					reminder_obj = reminder
-					break
-			if (reminder_obj is not None):
-				break
-		
-		if(reminder_obj is None):
-			return
-
-		channel = self.client.get_channel(payload.channel_id)
-		emoji = payload.emoji.name
-		if(emoji == "❌"):
-			self.inactivate_reminder(reminder_obj)
-			await channel.send(f"{user.mention} has closed the reminder!", embed = reminder_obj.get_embed(""))
-			
+		self.inactivate_reminder(reminder)			
 			
 	def inactivate_reminder(self,reminder):
 		try:
@@ -223,12 +227,12 @@ def setup(client):
 
 
 class Reminder():
-	def __init__(self):
+	def __init__(self,author):
 		self.title = "No Title"
 		self.due_datetime = None
 		self.description = "No Description"
 		self.active = True
-		self.list_of_msg_id = []
+		self.author = author
 
 	def inactivate(self):
 		self.active = False
@@ -238,9 +242,6 @@ class Reminder():
 
 	def __str__(self):
 		return self.title + " by- " + str(self.due_datetime) + " for- "+ self.description
-
-	def msg_ids(self):
-		return self.list_of_msg_id
 
 	def set_title(self,title_str):
 		self.title = title_str
@@ -261,9 +262,11 @@ class Reminder():
 		except:
 			raise Exception()
 	
+	def get_author(self):
+		return self.author
 
-	def add_to_id_list(self, msg_id):
-		self.list_of_msg_id.append(msg_id)
+	def get_title(self):
+		return self.title
 
 	def get_datetime(self):
 		return self.due_datetime
