@@ -57,6 +57,7 @@ class Music(commands.Cog):
 			ctx.voice_client.stop()
 			await self.now_playing(ctx, self.song_q[0])
 			self.song_q = self.song_q[1:]
+			self.song_d = self.song_d[1:]
 
 	@commands.command(aliases=['p'])
 	async def play(self, ctx, *, url : str):
@@ -85,6 +86,7 @@ class Music(commands.Cog):
 		if ctx.voice_client.source is not None:
 			queue_len = len(self.song_q)
 			self.song_q.append(url)
+			self.song_d.append(info['title'])
 		await self.now_playing(ctx, url)
 		
 	async def now_playing(self, ctx, url):
@@ -131,7 +133,6 @@ class Music(commands.Cog):
 		video_title = str(res['items'][0]['snippet']['title'])
 		video_channel = str(res['items'][0]['snippet']['channelTitle'])
 		thumbnail_url = str(res['items'][0]['snippet']['thumbnails']['high']['url'])
-		self.song_d.append(video_title)
 		print(video_title)
 		url = 'https://www.youtube.com/watch?v=' + video_id
 		print(query_string)
