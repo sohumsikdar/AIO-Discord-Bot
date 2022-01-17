@@ -9,6 +9,8 @@ IST = pytz.timezone('Asia/Kolkata')
 client = discord.Client()
 client = commands.Bot(command_prefix= '>')
 
+val = "You will be notified when it ends. Other users can also be notified by reacting as ⏰. Users can also be notified in dm by reacting as 🗨️"
+
 class Remind(commands.Cog):
 	def __init__(self,client):
 		super().__init__()
@@ -16,47 +18,61 @@ class Remind(commands.Cog):
 
 	@commands.command()
 	async def timer(self,ctx,*,dur):
-		val = 'You will be notified when timer ends. Other users can also be notified by reacting as ⏰. Users can also be notified in dm by reacting as 🗨️'
-		dur = parse(dur)
-		desc = str(timedelta(seconds=dur))
-		embed = discord.Embed(title = "Timer Added!", color = discord.Color.red())
-		embed.add_field(name= desc,value= val)
-		embed.set_thumbnail(url='https://previews.123rf.com/images/djvstock/djvstock1801/djvstock180109568/94114510-red-clock-with-yellow-background-vector-ilustration.jpg?fj=1')
-		msg = await ctx.send(embed = embed)
-		await msg.add_reaction("⏰")
-		await msg.add_reaction("🗨️")
-    
-		while True:
-			await asyncio.sleep(1)
-			dur -= 1
-			if(dur == 0):
-				msg = await msg.channel.fetch_message(msg.id)
-
-				users_to_mention = set()
-				users_to_dm = set()
-
-				for reaction in msg.reactions:
-					if(reaction.emoji == "⏰"):
-						async for user in reaction.users():
-							if (user.bot == False):
-								users_to_mention.add(user.mention)
-						
-					elif (reaction.emoji == "🗨️"):
-						async for user in reaction.users():
-							if (user.bot == False):
-								users_to_dm.add(user)
-
-				users_to_mention.add(ctx.author.mention)
-				mentions = ""
-				for user in users_to_mention:
-					mentions += str(user)+" "
-				await ctx.send(f"{mentions} Time's up!")
-
-				for user in users_to_dm:
-					await user.send(f"One of your timer for duration `{desc}` elapsed!")
-
-				break
+		try:
+			dur = parse(dur)
+			if(dur < 0):
+				await ctx.send("Cannot go back in time!")
+				return
 			
+			elif(dur > 86400):
+				await ctx.send("Cannot set a timer for more than a day! Use `>remind`.")
+				return
+
+			desc = str(timedelta(seconds=dur))
+			embed = discord.Embed(title = "Timer Added!", color = discord.Color.red())
+			embed.add_field(name= desc,value= val)
+			embed.set_thumbnail(url='https://previews.123rf.com/images/djvstock/djvstock1801/djvstock180109568/94114510-red-clock-with-yellow-background-vector-ilustration.jpg?fj=1')
+			embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+			msg = await ctx.send(embed = embed)
+			await msg.add_reaction("⏰")
+			await msg.add_reaction("🗨️")
+		
+			while True:
+				await asyncio.sleep(1)
+				dur -= 1
+				if(dur == 0):
+					msg = await msg.channel.fetch_message(msg.id)
+
+					users_to_mention = set()
+					users_to_dm = set()
+
+					for reaction in msg.reactions:
+						if(reaction.emoji == "⏰"):
+							async for user in reaction.users():
+								if (user.bot == False):
+									users_to_mention.add(user.mention)
+							
+						elif (reaction.emoji == "🗨️"):
+							async for user in reaction.users():
+								if (user.bot == False):
+									users_to_dm.add(user)
+
+					users_to_mention.add(ctx.author.mention)
+					mentions = ""
+					for user in users_to_mention:
+						mentions += str(user)+" "
+					await ctx.send(f"{mentions} Time's up!")
+
+					for user in users_to_dm:
+						await user.send(f"One of your timer for duration `{desc}` elapsed!")
+
+					break
+
+		except:
+			await ctx.send("Cannot understand the time you have given!")
+			return
+			
+				
 
 	@commands.command()
     #Usage: <title> (optional) by <date> <time>
@@ -103,8 +119,17 @@ class Remind(commands.Cog):
 			next_alert = int(dur-durations[idx+1])
 		else:
 			next_alert = int(dur)
+		
+		if(next_alert < 0):
+			await ctx.send("Cannot go back in time!")
+			return
+
+		elif(next_alert > (86400*366)):
+			await ctx.send("Cannot set a reminder for more than a year!")
+			return
 
 		embed = reminder.get_embed(next_alert)
+		embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
 		msg = await ctx.send(embed = embed)
 		await msg.add_reaction("⏰")
 		await msg.add_reaction("🗨️")
@@ -205,6 +230,8 @@ class Reminder():
 		embed = discord.Embed(title = "Reminder: "+self.title.title(), description=self.description, color = discord.Color.blue())
 		embed.add_field(name = 'Due on: ', value = f'{str(self.due_datetime.date())} at {str(self.due_datetime.time())}', inline=False)
 		embed.add_field(name = 'Next alert in: ', value = self.get_formatted(next_alert))
+		embed.set_footer(text = val)
+		embed.set_thumbnail(url='https://previews.123rf.com/images/djvstock/djvstock1801/djvstock180109568/94114510-red-clock-with-yellow-background-vector-ilustration.jpg?fj=1')
 		return embed
 
 	def get_formatted(self,next_alert):
