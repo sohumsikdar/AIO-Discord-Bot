@@ -15,6 +15,7 @@ class Remind(commands.Cog):
 	def __init__(self,client):
 		super().__init__()
 		self.client = client
+		self.reminder_queue = []
 
 	@commands.command()
 	async def timer(self,ctx,*,dur):
@@ -130,17 +131,25 @@ class Remind(commands.Cog):
 
 		embed = reminder.get_embed(next_alert)
 		embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+		embed.set_footer(text = val)
 		msg = await ctx.send(embed = embed)
 		await msg.add_reaction("⏰")
 		await msg.add_reaction("🗨️")
 		await msg.add_reaction("❌")
+		reminder.add_to_id_list(msg.id)
+		self.reminder_queue.append(reminder)
 
 		while(idx < 4):
+
 			if(dur == 0):
 				idx = 3
 				continue
 
+
 			await asyncio.sleep(dur-durations[idx])
+			if(not reminder.is_active()):
+				return
+
 			dur = durations[idx]
 			if(idx < 3):
 				next_alert = int(dur-durations[idx+1])
@@ -166,22 +175,48 @@ class Remind(commands.Cog):
 			mentions = ""
 			for user in users_to_mention:
 				mentions += str(user)+" "
-			await ctx.send(f"{mentions}",embed = embed)
+			new_msg = await ctx.send(f"{mentions}",embed = embed)
+
+			reminder.add_to_id_list(new_msg.id)
 
 			for user in users_to_dm:
 				await user.send(embed = embed)
 
 			idx += 1	
+		self.inactivate_reminder(reminder)
 
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self,payload):
-		msg_id = payload.message_id
-		emoji = payload.emoji.name
-		channel = self.client.get_channel(payload.channel_id)
 		user = await self.client.fetch_user(payload.user_id)
-		if(emoji == "❌" and user.bot == False):
-			await channel.send(f"{user.name} pressed {emoji} on message")
+		if (user.bot == True):
+			return
+
+		msg_id = payload.message_id
+		reminder_obj = None
+		for reminder in self.reminder_queue:
+			for reminder_msg_id in reminder.msg_ids():
+				if (msg_id == reminder_msg_id):
+					reminder_obj = reminder
+					break
+			if (reminder_obj is not None):
+				break
+		
+		if(reminder_obj is None):
+			return
+
+		channel = self.client.get_channel(payload.channel_id)
+		emoji = payload.emoji.name
+		if(emoji == "❌"):
+			self.inactivate_reminder(reminder_obj)
+			await channel.send(f"{user.mention} has closed the reminder!", embed = reminder_obj.get_embed(""))
 			
+			
+	def inactivate_reminder(self,reminder):
+		try:
+			self.reminder_queue.remove(reminder)
+			reminder.inactivate()
+		except:
+			reminder.inactivate()
 
 def setup(client):
     client.add_cog(Remind(client))
@@ -204,6 +239,9 @@ class Reminder():
 	def __str__(self):
 		return self.title + " by- " + str(self.due_datetime) + " for- "+ self.description
 
+	def msg_ids(self):
+		return self.list_of_msg_id
+
 	def set_title(self,title_str):
 		self.title = title_str
 	
@@ -223,6 +261,10 @@ class Reminder():
 		except:
 			raise Exception()
 	
+
+	def add_to_id_list(self, msg_id):
+		self.list_of_msg_id.append(msg_id)
+
 	def get_datetime(self):
 		return self.due_datetime
 
@@ -230,7 +272,6 @@ class Reminder():
 		embed = discord.Embed(title = "Reminder: "+self.title.title(), description=self.description, color = discord.Color.blue())
 		embed.add_field(name = 'Due on: ', value = f'{str(self.due_datetime.date())} at {str(self.due_datetime.time())}', inline=False)
 		embed.add_field(name = 'Next alert in: ', value = self.get_formatted(next_alert))
-		embed.set_footer(text = val)
 		embed.set_thumbnail(url='https://previews.123rf.com/images/djvstock/djvstock1801/djvstock180109568/94114510-red-clock-with-yellow-background-vector-ilustration.jpg?fj=1')
 		return embed
 
