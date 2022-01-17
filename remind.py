@@ -1,4 +1,4 @@
-from datetime import date, timedelta, datetime
+from datetime import timedelta, datetime
 import discord, asyncio, pytz, DiscordUtils
 import re
 from discord.ext import commands

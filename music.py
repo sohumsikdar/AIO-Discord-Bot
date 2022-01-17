@@ -125,6 +125,12 @@ class Music(commands.Cog):
 		embed.set_footer(text="Songs in queue")
 		await ctx.send(embed=embed)
 
+	@commands.command(aliases = ['s'])
+	async def skip(self, ctx):
+		await ctx.voice_client.stop()
+		await ctx.channel.send("Skipped the current song")
+		await self.check_q(ctx)
+	
 	def fetch_url_from_youtube(self,query):
 		query_list = query.split()
 		query_string = 'https://www.googleapis.com/youtube/v3/search?part=snippet&key=' + self.ytb_api + '&type=video&q='
