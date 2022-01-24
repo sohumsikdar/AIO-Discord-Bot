@@ -15,38 +15,54 @@ class Remind(commands.Cog):
 	def __init__(self,client):
 		super().__init__()
 		self.client = client
-		self.reminder_queue = []
+		self.reminder_queue = {}
+		#Update the dict.
+
+	def getGuildData(self,guildId):
+		try:
+			return self.reminder_queue[guildId]
+		except KeyError:
+			return []
+
+	def addReminderData(self,guildId,reminder):
+		try:
+			self.reminder_queue[guildId].append(reminder)
+		except KeyError:
+			ls = [reminder]
+			self.reminder_queue[guildId] = ls
 
 	@commands.command()
 	async def delrm(self,ctx,sno):
+		reminder_queue = self.getGuildData(ctx.guild.id)
 		try:
 			sno = int(sno)-1
-			reminder = self.reminder_queue[sno]
-			self.inactivate_reminder(reminder)
+			reminder = reminder_queue[sno]
+			self.inactivate_reminder(reminder,ctx.guild.id)
 			await ctx.send(f"{ctx.author.mention} has closed the reminder!", embed = reminder.get_embed(""))
 		except:
 			await ctx.send("There is no reminder with the given Sno.!")
 
 	@commands.command()
 	async def rmq(self,ctx):
-		if (self.reminder_queue == []):
+		reminder_queue = self.getGuildData(ctx.guild.id)
+		if (reminder_queue == []):
 			await ctx.send("There are no reminders!")
 			return
 
 		page_size = 10
 		sno = 0
 		embed_list = []
-		while(sno < len(self.reminder_queue)):		
+		while(sno < len(reminder_queue)):		
 			reminder_title_list = ""
 			reminder_due_list = ""
 			reminder_author_list = ""
 			for i in range(page_size):
-				reminder = self.reminder_queue[sno]
+				reminder = reminder_queue[sno]
 				reminder_title_list += str(sno+1)+"). "+reminder.get_title()+"\n"
 				reminder_due_list += str(reminder.get_datetime().date())+" at "+str(reminder.get_datetime().time())+"\n"
 				reminder_author_list += str(reminder.get_author().display_name)+"\n"
 				sno += 1
-				if(sno == len(self.reminder_queue)):
+				if(sno == len(reminder_queue)):
 					break
 
 			embed = discord.Embed(title = "Reminders", color = discord.Color.dark_gold())
@@ -128,6 +144,7 @@ class Remind(commands.Cog):
     #Usage: <title> (optional) by <date> <time>
     # (can be anyone of these but at least one) for <details> (optional)
 	async def remind(self,ctx, *, details = ''):
+		reminder_queue = self.getGuildData(ctx.guild.id)
 		dparam = []
 		durations = [86400,3600,600,0]
 		if(details.find('by-') == -1):
@@ -184,8 +201,8 @@ class Remind(commands.Cog):
 		msg = await ctx.send(embed = embed)
 		await msg.add_reaction("⏰")
 		await msg.add_reaction("🗨️")
-		self.reminder_queue.append(reminder)
-
+		self.addReminderData(ctx.guild.id,reminder)
+		
 		while(idx < 4):
 
 			if(dur == 0):
@@ -227,11 +244,12 @@ class Remind(commands.Cog):
 				await user.send(embed = embed)
 
 			idx += 1	
-		self.inactivate_reminder(reminder)			
+		self.inactivate_reminder(reminder,ctx.guild.id)			
 			
-	def inactivate_reminder(self,reminder):
+	def inactivate_reminder(self,reminder,guildVal):
+		reminder_queue = self.getGuildData(guildVal)
 		try:
-			self.reminder_queue.remove(reminder)
+			reminder_queue.remove(reminder)
 			reminder.inactivate()
 		except:
 			reminder.inactivate()
